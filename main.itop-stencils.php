@@ -58,6 +58,8 @@ class iTopStencils implements iApplicationObjectExtension
 
 	public function OnDBInsert($oObject, $oChange = null)
 	{
+		$this->OnReachingState($oObject, null);
+
 		if (isset($oObject->_stencils_reaching_state))
 		{
 			$sReachedState = $oObject->_stencils_reaching_state;
@@ -74,7 +76,13 @@ class iTopStencils implements iApplicationObjectExtension
 	// Helpers
 	//////////////////////////////////////////////////
 
-	protected function OnReachingState($oObject, $sReachedState)
+	/**
+	 * Get the rule for a given class (still requires additional filtering)
+	 * 	 	 
+	 * @param object oObject
+	 * @param string $sReachedState The new state. Null means "just created" (does not require a lifecycle)
+	 */	 	
+	protected function OnReachingState($oObject, $sReachedState = null)
 	{
 		try
 		{
@@ -94,12 +102,18 @@ class iTopStencils implements iApplicationObjectExtension
 		catch (Exception $e)
 		{
 			IssueLog::Error('itop-stencils: '.$e->getMessage());
-		$aTrace = $e->getTrace();
-		IssueLog::Error('itop-stencils: '.print_r($aTrace, true));
+			$aTrace = $e->getTrace();
+			IssueLog::Error('itop-stencils: '.print_r($aTrace, true));
 		}
 	}
 
-	protected function GetRules($sClass, $sReachedState)
+	/**
+	 * Get the rule for a given class (still requires additional filtering)
+	 * 	 	 
+	 * @param string sClass
+	 * @param string $sReachedState The new state. Null means "just created" (does not require a lifecycle)
+	 */	 	
+	protected function GetRules($sClass, $sReachedState = null)
 	{
 		static $aRules = null;
 		if (is_null($aRules))
@@ -109,13 +123,21 @@ class iTopStencils implements iApplicationObjectExtension
 			foreach ($aRawRules as $aRuleData)
 			{
 				$sTriggerClass = $aRuleData['trigger_class'];
-				$sTriggerState = $aRuleData['trigger_state'];
-				$aRules[$sTriggerClass.'/'.$sTriggerState][] = $aRuleData;
+				if (isset($aRuleData['trigger_state']))
+				{
+					$sTriggerState = $aRuleData['trigger_state'];
+					$aRules[$sTriggerClass.'/'.$sTriggerState][] = $aRuleData;
+				}
+				else
+				{
+					$aRules[$sTriggerClass][] = $aRuleData;
+				}
 			}
 		}
-		if (array_key_exists($sClass.'/'.$sReachedState, $aRules))
+		$sRuleKey = is_null($sReachedState) ? $sClass : $sClass.'/'.$sReachedState;
+		if (array_key_exists($sRuleKey, $aRules))
 		{
-			return $aRules[$sClass.'/'.$sReachedState];
+			return $aRules[$sRuleKey];
 		}
 		else
 		{
