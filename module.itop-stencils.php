@@ -5,7 +5,7 @@
 
 SetupWebPage::AddModule(
 	__FILE__, // Path to the current file, all other file names are relative to the directory containing this file
-	'itop-stencils/0.0.0',
+	'itop-stencils/0.1.0',
 	array(
 		// Identification
 		//
@@ -53,14 +53,17 @@ SetupWebPage::AddModule(
 					'report_label/FR FR' => 'Une liste de tâche a été créée pour ce ticket',
 					'templates' => 'SELECT Organization WHERE id = :trigger->org_id', // A query to define how to look for the templates
 					'copy_class' => 'WorkOrder', // Class of the copied templates
-					'copy_actions' => array( // Series of actions to preset the object in the creation form
+					'copy_actions' => array( // Series of actions to preset the object
 						'set(name,Test bizarre)',
 						'set(ticket_id,$trigger->id$)',
 						'set(team_id,$trigger->team_id$)',
 						'set(agent_id,$trigger->agent_id$)',
 						'set(description,$this->code$)',
 					),
-					'copy_hierarchy' => true, // copy the hierarchy (supposes the existence of an attribute of type AttributeHierarchicalKey in both classes !)
+					'copy_hierarchy' => array(
+						'template_parent_attcode' => 'parent_id',
+						'copy_parent_attcode' => 'workorder_parent_id'
+					),
 					'retrofit' => array( // Series of actions to retrofit some information from the created object to the source object
 						'set(private_log,On a fait des choses\\, on verra bien ce qu\'il se passe)',
 						'apply_stimulus(ev_pending)',
