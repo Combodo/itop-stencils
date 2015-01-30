@@ -147,6 +147,10 @@ class iTopStencils implements iApplicationObjectExtension
 
 	protected function ExecuteRule($oObject, $aRuleData)
 	{
+		// Workaround bugs found in DBObject::ToArgs and fixed in iTop > 2.1.0
+		// Reload the object so as to reset the cache of ToArgs (not invalidated as expected)
+		$oObject = MetaModel::GetObject(get_class($oObject), $oObject->GetKey());
+
 		$oSearch = DBObjectSearch::FromOQL($aRuleData['templates']);
 		$aQueryArgs = $oObject->ToArgs('trigger');
 		$oTemplates = new DBObjectSet($oSearch, array(), $aQueryArgs);
@@ -177,31 +181,32 @@ class iTopStencils implements iApplicationObjectExtension
 		iTopObjectCopier::AddExecContextObject($oObject, 'trigger');
 		iTopObjectCopier::ExecActions($aRuleData['copy_actions'], $oTemplate, $oCopy);
 
+		$aHierarchyData = isset($aRuleData['copy_hierarchy']) ? $aRuleData['copy_hierarchy'] : null;
+
 		if (!is_null($oParentCopy))
 		{
-			if ($aRuleData['copy_hierarchy'])
+			if (!is_null($aHierarchyData))
 			{
-				$sCopyParentAttCode = self::GetParentAttCode($aRuleData['copy_class']);
-				if (is_null($sCopyParentAttCode))
+				$sCopyParentAttCode = $aHierarchyData['copy_parent_attcode'];
+				if (empty($sCopyParentAttCode))
 				{
-					throw new Exception('copy_hierarchy cannot be enabled because '.$aRuleData['copy_class']. ' does not have any hierarchical key');
+					throw new Exception('Missing copy_parent_attcode');
 				}
+				$oCopy->Set($sCopyParentAttCode, $oParentCopy->GetKey());
 			}
-			$oCopy->Set($sCopyParentAttCode, $oParentCopy->GetKey());
 		}
 
 		$oCopy->DBInsert();
 
-		if ($aRuleData['copy_hierarchy'])
+		if (!is_null($aHierarchyData))
 		{
 			// Recurse on the templates below the current one
 			//
-			$sTemplateParentAttCode = self::GetParentAttCode(get_class($oTemplate));
-			if (is_null($sTemplateParentAttCode))
+			$sTemplateParentAttCode = $aHierarchyData['template_parent_attcode'];
+			if (empty($sTemplateParentAttCode))
 			{
-				throw new Exception('copy_hierarchy cannot be enabled because '.get_class($oTemplate). ' does not have any hierarchical key');
+				throw new Exception('Missing template_parent_attcode');
 			}
-
 			$oSubSearch = new DBObjectSearch(get_class($oTemplate));
 			$oSubSearch->AddCondition($sTemplateParentAttCode, $oTemplate->GetKey());
 			$oSubset = new DBObjectSet($oSubSearch);
@@ -210,24 +215,6 @@ class iTopStencils implements iApplicationObjectExtension
 				$this->CopyTemplate($oObject, $aRuleData, $oSubItem, $oCopy);
 			}
 		}
-	}
-
-	protected static function GetParentAttCode($sClass)
-	{
-		static $aParentAttCodes = array();
-		if (!array_key_exists($sClass, $aParentAttCodes))
-		{
-			$aParentAttCodes[$sClass] = null;
-			foreach (MetaModel::ListAttributeDefs($sClass) as $sAttCode => $oAttDef)
-			{
-				if ($oAttDef instanceof AttributeHierarchicalKey)
-				{
-					$aParentAttCodes[$sClass] = $sAttCode;
-					break;
-				} 
-			}
-		}
-		return $aParentAttCodes[$sClass];
 	}
 
 	/**
