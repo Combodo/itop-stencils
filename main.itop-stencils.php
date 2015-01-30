@@ -89,21 +89,109 @@ class iTopStencils implements iApplicationObjectExtension
 			$aRules = $this->GetRules(get_class($oObject), $sReachedState);
 			foreach ($aRules as $aRuleData)
 			{
-				// check scope
-				$oSearch = DBObjectSearch::FromOQL($aRuleData['trigger_scope']);
-				$oSearch->AddCondition('id', $oObject->GetKey(), '=');
-				$oSet = new DBObjectSet($oSearch);
-				if ($oSet->Count() > 0)
+				try
 				{
-					$this->ExecuteRule($oObject, $aRuleData);
+					self::CheckRule($aRuleData);
+
+					// check scope
+					$oSearch = DBObjectSearch::FromOQL($aRuleData['trigger_scope']);
+					$oSearch->AddCondition('id', $oObject->GetKey(), '=');
+					$oSet = new DBObjectSet($oSearch);
+					if ($oSet->Count() > 0)
+					{
+							$this->ExecuteRule($oObject, $aRuleData);
+					}
+				}
+				catch (Exception $e)
+				{
+					throw new Exception('rule #'.$aRuleData['id'].' - '.$e->getMessage());
 				}
 			}
 		}
 		catch (Exception $e)
 		{
 			IssueLog::Error('itop-stencils: '.$e->getMessage());
-			$aTrace = $e->getTrace();
-			IssueLog::Error('itop-stencils: '.print_r($aTrace, true));
+			//$aTrace = $e->getTrace();
+			//IssueLog::Error('itop-stencils: '.print_r($aTrace, true));
+		}
+	}
+
+	/**
+	 * Checks the structure and logs errors if issues have been encountered
+	 */
+	public static function CheckRule($aRuleData)
+	{
+		if (($aRuleData['trigger_class'] != '') && !MetaModel::IsValidClass($aRuleData['trigger_class']))
+		{
+			throw new Exception('Parameter trigger_class: "'.$aRuleData['trigger_class'].'" is not a valid class');
+		}
+		if (!isset($aRuleData['trigger_scope']))
+		{
+			throw new Exception('Missing parameter "trigger_scope"');
+		}
+		try
+		{
+			$oTest = DBObjectSearch::FromOQL($aRuleData['trigger_scope']);
+		}
+		catch (Exception $e)
+		{
+			throw new Exception('Parameter trigger_scope: '.$e->getMessage());
+		}
+		if (!MetaModel::IsSameFamilyBranch($oTest->GetClass(), $aRuleData['trigger_class']))
+		{
+			throw new Exception('Parameters trigger_class "'.$aRuleData['trigger_class'].'" and trigger_scope "'.$aRuleData['trigger_scope'].'" are not compatible (class mismatch)');
+		}
+		if (!isset($aRuleData['trigger_state']))
+		{
+			throw new Exception('Missing parameter "trigger_state"');
+		}
+		if (!isset($aRuleData['templates']))
+		{
+			throw new Exception('Missing parameter "templates"');
+		}
+		try
+		{
+			$oTest = DBObjectSearch::FromOQL($aRuleData['templates']);
+		}
+		catch (Exception $e)
+		{
+			throw new Exception('Parameter templates: '.$e->getMessage());
+		}
+		$sTemplateClass = $oTest->GetClass();
+		if (($aRuleData['copy_class'] != '') && !MetaModel::IsValidClass($aRuleData['copy_class']))
+		{
+			throw new Exception('Parameter copy_class: "'.$aRuleData['copy_class'].'" is not a valid class');
+		}
+		if (!is_array($aRuleData['copy_actions']))
+		{
+			throw new Exception('Parameter copy_actions: must be an array');
+		}
+		if (!is_array($aRuleData['retrofit']))
+		{
+			throw new Exception('Parameter retrofit: must be an array');
+		}
+		if (isset($aRuleData['copy_hierarchy']))
+		{
+			if (!is_array($aRuleData['copy_hierarchy']))
+			{
+				throw new Exception('Parameter: copy_hierarchy must be an array');
+			}
+			if (!isset($aRuleData['copy_hierarchy']['template_parent_attcode']))
+			{
+				throw new Exception('Missing parameter "copy_hierarchy/template_parent_attcode"');
+			}
+			if (!MetaModel::IsValidAttCode($sTemplateClass, $aRuleData['copy_hierarchy']['template_parent_attcode']))
+			{
+				throw new Exception('Parameter copy_hierarchy/template_parent_attcode: '.$aRuleData['copy_hierarchy']['template_parent_attcode'].' is not a valid attribute for class '.$sTemplateClass);
+			}
+			if (!isset($aRuleData['copy_hierarchy']['copy_parent_attcode']))
+			{
+				throw new Exception('Missing parameter "copy_hierarchy/copy_parent_attcode"');
+			}
+			if (!MetaModel::IsValidAttCode($aRuleData['copy_class'], $aRuleData['copy_hierarchy']['copy_parent_attcode']))
+			{
+				throw new Exception('Parameter copy_hierarchy/copy_parent_attcode: '.$aRuleData['copy_hierarchy']['copy_parent_attcode'].' is not a valid attribute for class '.$aRuleData['copy_class']);
+			}
 		}
 	}
 
@@ -120,8 +208,9 @@ class iTopStencils implements iApplicationObjectExtension
 		{
 			$aRawRules = MetaModel::GetModuleSetting('itop-stencils', 'rules', array());
 			$aRules = array();
-			foreach ($aRawRules as $aRuleData)
+			foreach ($aRawRules as $iRule => $aRuleData)
 			{
+				$aRuleData['id'] = $iRule;
 				$sTriggerClass = $aRuleData['trigger_class'];
 				if (isset($aRuleData['trigger_state']))
 				{
