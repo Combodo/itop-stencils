@@ -256,7 +256,7 @@ class iTopStencils implements iApplicationObjectExtension
 			$sMessage = self::FormatMessage($aRuleData, 'report_label');
 			if (strlen(trim($sMessage)) > 0)
 			{
-				cmdbAbstractObject::SetSessionMessage(get_class($oObject), $oObject->GetKey(), 'stencils', $sMessage, 'info', 0, true /* must not exist */);
+				cmdbAbstractObject::SetSessionMessage(get_class($oObject), $oObject->GetKey(), 'stencils'.$aRuleData['id'], $sMessage, 'info', 0, true /* must not exist */);
 			}
 		}
 	}
