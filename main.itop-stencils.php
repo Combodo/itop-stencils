@@ -212,7 +212,7 @@ class iTopStencils implements iApplicationObjectExtension
 			{
 				$aRuleData['id'] = $iRule;
 				$sTriggerClass = $aRuleData['trigger_class'];
-				if (isset($aRuleData['trigger_state']))
+				if (!empty($aRuleData['trigger_state']))
 				{
 					$sTriggerState = $aRuleData['trigger_state'];
 					$aRules[$sTriggerClass.'/'.$sTriggerState][] = $aRuleData;
