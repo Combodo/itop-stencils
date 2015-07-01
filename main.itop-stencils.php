@@ -256,6 +256,7 @@ class iTopStencils implements iApplicationObjectExtension
 			{
 				$oCopy = $this->CopyTemplate($oObject, $aRuleData, $oTemplate);
 				iTopObjectCopier::ExecActions($aRuleData['retrofit_from_copy'], $oCopy, $oObject);
+				iTopObjectCopier::ExecActions($aRuleData['copy_from_trigger'], $oObject, $oCopy);
 			}
 
 			iTopObjectCopier::ExecActions($aRuleData['retrofit'], $oObject, $oObject);
