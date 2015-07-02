@@ -173,6 +173,13 @@ class iTopStencils implements iApplicationObjectExtension
 				throw new Exception('Parameter retrofit_from_copy: must be an array');
 			}
 		}
+		if (isset($aRuleData['copy_from_trigger']))
+		{
+			if (!is_array($aRuleData['copy_from_trigger']))
+			{
+				throw new Exception('Parameter copy_from_trigger: must be an array');
+			}
+		}
 		if (!is_array($aRuleData['retrofit']))
 		{
 			throw new Exception('Parameter retrofit: must be an array');
@@ -255,8 +262,10 @@ class iTopStencils implements iApplicationObjectExtension
 			while ($oTemplate = $oTemplates->Fetch())
 			{
 				$oCopy = $this->CopyTemplate($oObject, $aRuleData, $oTemplate);
-				iTopObjectCopier::ExecActions($aRuleData['retrofit_from_copy'], $oCopy, $oObject);
-				iTopObjectCopier::ExecActions($aRuleData['copy_from_trigger'], $oObject, $oCopy);
+				if (isset($aRuleData['retrofit_from_copy']))
+				{
+					iTopObjectCopier::ExecActions($aRuleData['retrofit_from_copy'], $oCopy, $oObject);
+				}
 			}
 
 			iTopObjectCopier::ExecActions($aRuleData['retrofit'], $oObject, $oObject);
@@ -278,6 +287,10 @@ class iTopStencils implements iApplicationObjectExtension
 		$oCopy = MetaModel::NewObject($aRuleData['copy_class']);
 		iTopObjectCopier::AddExecContextObject($oObject, 'trigger');
 		iTopObjectCopier::ExecActions($aRuleData['copy_actions'], $oTemplate, $oCopy);
+		if (isset($aRuleData['copy_from_trigger']))
+		{
+			iTopObjectCopier::ExecActions($aRuleData['copy_from_trigger'], $oObject, $oCopy);
+		}
 
 		$aHierarchyData = isset($aRuleData['copy_hierarchy']) ? $aRuleData['copy_hierarchy'] : null;
 
@@ -294,7 +307,7 @@ class iTopStencils implements iApplicationObjectExtension
 			}
 		}
 
-		$oCopy->DBInsert();
+		$oCopy->DBWrite(); // DBInsert is ok, but DBWrite gives more flexibility
 
 		if (!is_null($aHierarchyData))
 		{
