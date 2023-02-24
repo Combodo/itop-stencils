@@ -20,6 +20,12 @@
 
 class iTopStencils implements iApplicationObjectExtension
 {
+	/**
+	 * @var array
+	 * @since 1.0.7 N°5997
+	 */
+	protected static $aUpdateReentrance = [];
+
 	//////////////////////////////////////////////////
 	// Implementation of iApplicationObjectExtension
 	//////////////////////////////////////////////////
@@ -37,7 +43,7 @@ class iTopStencils implements iApplicationObjectExtension
 			$aChanges = $oObject->ListChanges();
 			if (array_key_exists($sStateAttCode, $aChanges))
 			{
-				$oObject->_stencils_reaching_state = $aChanges[$sStateAttCode];
+				static::$aUpdateReentrance[$this->GetReentranceKeyFromObject($oObject)] = $aChanges[$sStateAttCode];
 			}
 		}
 	}
@@ -48,10 +54,10 @@ class iTopStencils implements iApplicationObjectExtension
 
 	public function OnDBUpdate($oObject, $oChange = null)
 	{
-		if (isset($oObject->_stencils_reaching_state))
-		{
-			$sReachedState = $oObject->_stencils_reaching_state;
-			unset($oObject->_stencils_reaching_state); // Prevent the rentrance
+		$sKey = $this->GetReentranceKeyFromObject($oObject);
+		if (array_key_exists($sKey, static::$aUpdateReentrance)) {
+			$sReachedState = static::$aUpdateReentrance[$sKey];
+			unset(static::$aUpdateReentrance[$sKey]); // Prevent the rentrance
 			$this->OnReachingState($oObject, $sReachedState);
 		}
 	}
@@ -60,10 +66,10 @@ class iTopStencils implements iApplicationObjectExtension
 	{
 		$this->OnReachingState($oObject, null);
 
-		if (isset($oObject->_stencils_reaching_state))
-		{
-			$sReachedState = $oObject->_stencils_reaching_state;
-			unset($oObject->_stencils_reaching_state); // Prevent the rentrance
+		$sKey = $this->GetReentranceKeyFromObject($oObject);
+		if (array_key_exists($sKey, static::$aUpdateReentrance)) {
+			$sReachedState = static::$aUpdateReentrance[$sKey];
+			unset(static::$aUpdateReentrance[$sKey]); // Prevent the rentrance
 			$this->OnReachingState($oObject, $sReachedState);
 		}
 	}
@@ -75,6 +81,17 @@ class iTopStencils implements iApplicationObjectExtension
 	//////////////////////////////////////////////////
 	// Helpers
 	//////////////////////////////////////////////////
+
+	/**
+	 * @param \DBObject $oObject
+	 *
+	 * @return string The reentrance key for $oObject
+	 * @since 1.0.7 N°5997
+	 */
+	protected function GetReentranceKeyFromObject($oObject)
+	{
+		return get_class($oObject).'::'.$oObject->GetKey();
+	}
 
 	/**
 	 * Get the rule for a given class (still requires additional filtering)
