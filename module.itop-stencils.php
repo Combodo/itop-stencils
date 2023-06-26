@@ -5,7 +5,7 @@
 
 SetupWebPage::AddModule(
 	__FILE__, // Path to the current file, all other file names are relative to the directory containing this file
-	'itop-stencils/1.0.7-dev',
+	'itop-stencils/1.0.7',
 	array(
 		// Identification
 		//
