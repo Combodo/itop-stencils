@@ -267,10 +267,6 @@ class iTopStencils implements iApplicationObjectExtension
 
 	protected function ExecuteRule($oObject, $aRuleData)
 	{
-		// Workaround bugs found in DBObject::ToArgs and fixed in iTop > 2.1.0
-		// Reload the object so as to reset the cache of ToArgs (not invalidated as expected)
-		$oObject = MetaModel::GetObject(get_class($oObject), $oObject->GetKey());
-
 		$oSearch = DBObjectSearch::FromOQL($aRuleData['templates']);
 		$aQueryArgs = $oObject->ToArgs('trigger');
 		$oTemplates = new DBObjectSet($oSearch, array(), $aQueryArgs);
