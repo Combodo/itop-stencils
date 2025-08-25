@@ -18,7 +18,11 @@
 //   along with iTop. If not, see <http://www.gnu.org/licenses/>
 
 
-class iTopStencils implements iApplicationObjectExtension
+use Combodo\iTop\Service\Events\EventData;
+use Combodo\iTop\Service\Events\EventService;
+use Combodo\iTop\Service\Events\iEventServiceSetup;
+
+class iTopStencils implements iEventServiceSetup
 {
 	/**
 	 * @var array
@@ -26,57 +30,42 @@ class iTopStencils implements iApplicationObjectExtension
 	 */
 	protected static $aUpdateReentrance = [];
 
-	//////////////////////////////////////////////////
-	// Implementation of iApplicationObjectExtension
-	//////////////////////////////////////////////////
+    public function RegisterEventsAndListeners() : void
+    {
+        EventService::RegisterListener(EVENT_DB_CHECK_TO_WRITE, [$this, 'OnDBCheckToWrite']);
+        EventService::RegisterListener(EVENT_DB_AFTER_WRITE, [$this, 'OnDBAfterWrite']);
+    }
 
-	public function OnIsModified($oObject)
-	{
-		return false;
-	}
+    public function OnDBAfterWrite(EventData $oEventData)
+    {
+        $oObject = $oEventData->Get('object');
 
-	public function OnCheckToWrite($oObject)
-	{
-		$sStateAttCode = MetaModel::GetStateAttributeCode(get_class($oObject));
-		if (!is_null($sStateAttCode))
-		{
-			$aChanges = $oObject->ListChanges();
-			if (array_key_exists($sStateAttCode, $aChanges))
-			{
-				static::$aUpdateReentrance[$this->GetReentranceKeyFromObject($oObject)] = $aChanges[$sStateAttCode];
-			}
-		}
-	}
+        if($oEventData->GetEventData()['is_new']){
+            $this->OnReachingState($oObject, null);
+        }
 
-	public function OnCheckToDelete($oObject)
-	{
-	}
+        $sKey = $this->GetReentranceKeyFromObject($oObject);
+        if (array_key_exists($sKey, static::$aUpdateReentrance)) {
+            $sReachedState = static::$aUpdateReentrance[$sKey];
+            unset(static::$aUpdateReentrance[$sKey]); // Prevent the rentrance
+            $this->OnReachingState($oObject, $sReachedState);
+        }
+    }
 
-	public function OnDBUpdate($oObject, $oChange = null)
-	{
-		$sKey = $this->GetReentranceKeyFromObject($oObject);
-		if (array_key_exists($sKey, static::$aUpdateReentrance)) {
-			$sReachedState = static::$aUpdateReentrance[$sKey];
-			unset(static::$aUpdateReentrance[$sKey]); // Prevent the rentrance
-			$this->OnReachingState($oObject, $sReachedState);
-		}
-	}
+    public function OnDBCheckToWrite(EventData $oEventData)
+    {
+        $oObject = $oEventData->Get('object');
+        $aChanges = $oEventData->Get('changes');
 
-	public function OnDBInsert($oObject, $oChange = null)
-	{
-		$this->OnReachingState($oObject, null);
-
-		$sKey = $this->GetReentranceKeyFromObject($oObject);
-		if (array_key_exists($sKey, static::$aUpdateReentrance)) {
-			$sReachedState = static::$aUpdateReentrance[$sKey];
-			unset(static::$aUpdateReentrance[$sKey]); // Prevent the rentrance
-			$this->OnReachingState($oObject, $sReachedState);
-		}
-	}
-
-	public function OnDBDelete($oObject, $oChange = null)
-	{
-	}
+        $sStateAttCode = MetaModel::GetStateAttributeCode(get_class($oObject));
+        if ($aChanges !== null && !is_null($sStateAttCode))
+        {
+            if (array_key_exists($sStateAttCode, $aChanges))
+            {
+                static::$aUpdateReentrance[$this->GetReentranceKeyFromObject($oObject)] = $aChanges[$sStateAttCode];
+            }
+        }
+    }
 
 	//////////////////////////////////////////////////
 	// Helpers
