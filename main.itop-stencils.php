@@ -24,11 +24,6 @@ use Combodo\iTop\Service\Events\iEventServiceSetup;
 
 class iTopStencils implements iEventServiceSetup
 {
-	/**
-	 * @var array
-	 * @since 1.0.7 N°5997
-	 */
-	protected static $aUpdateReentrance = [];
 
     public function RegisterEventsAndListeners() : void
     {
