@@ -32,7 +32,6 @@ class iTopStencils implements iEventServiceSetup
 
     public function RegisterEventsAndListeners() : void
     {
-        EventService::RegisterListener(EVENT_DB_CHECK_TO_WRITE, [$this, 'OnDBCheckToWrite']);
         EventService::RegisterListener(EVENT_DB_AFTER_WRITE, [$this, 'OnDBAfterWrite']);
     }
 
