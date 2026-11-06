@@ -42,27 +42,11 @@ class iTopStencils implements iEventServiceSetup
 
         if($oEventData->GetEventData()['is_new']){
             $this->OnReachingState($oObject, null);
-        }
-
-        $sKey = $this->GetReentranceKeyFromObject($oObject);
-        if (array_key_exists($sKey, static::$aUpdateReentrance)) {
-            $sReachedState = static::$aUpdateReentrance[$sKey];
-            unset(static::$aUpdateReentrance[$sKey]); // Prevent the rentrance
-            $this->OnReachingState($oObject, $sReachedState);
-        }
-    }
-
-    public function OnDBCheckToWrite(EventData $oEventData)
-    {
-        $oObject = $oEventData->Get('object');
-        $aChanges = $oEventData->Get('changes');
-
-        $sStateAttCode = MetaModel::GetStateAttributeCode(get_class($oObject));
-        if ($aChanges !== null && !is_null($sStateAttCode))
-        {
-            if (array_key_exists($sStateAttCode, $aChanges))
-            {
-                static::$aUpdateReentrance[$this->GetReentranceKeyFromObject($oObject)] = $aChanges[$sStateAttCode];
+        }  else {
+            $sStateAttCode = MetaModel::GetStateAttributeCode(get_class($oObject));
+            $aChanges = $oEventData->Get('changes');
+            if (!is_null($sStateAttCode) && array_key_exists($sStateAttCode, $aChanges)) {
+                $this->OnReachingState($oObject, $oObject->Get($sStateAttCode));
             }
         }
     }
@@ -71,16 +55,6 @@ class iTopStencils implements iEventServiceSetup
 	// Helpers
 	//////////////////////////////////////////////////
 
-	/**
-	 * @param \DBObject $oObject
-	 *
-	 * @return string The reentrance key for $oObject
-	 * @since 1.0.7 N°5997
-	 */
-	protected function GetReentranceKeyFromObject($oObject)
-	{
-		return get_class($oObject).'::'.$oObject->GetKey();
-	}
 
 	/**
 	 * Get the rule for a given class (still requires additional filtering)
